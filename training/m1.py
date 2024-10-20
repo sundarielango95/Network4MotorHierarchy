@@ -20,9 +20,10 @@ import model_architecture
 plant_model = model_architecture.plant_net_xandy()
 plant_model.load_state_dict(torch.load("models/plant/plant_xandy_3_data_v1_random"))
 # subject ID number
-sub_num = 21
+sub_num = 1
 # m1 model
 m1_model = model_architecture.ctrlr_m1()
+# load saved model
 # m1_model.load_state_dict(torch.load("models/theta_vel/m1_dist_200"))
  
 fname = "data/train_random_theta_vel_dist.xlsx"
@@ -38,7 +39,6 @@ for i in range(num_inputs):
     uk[i,:,1] = data[i*time_steps:(i+1)*time_steps,1]
     uk[i,:,2] = data[i*time_steps:(i+1)*time_steps,6]
     uk[i,:,3] = data[i*time_steps:(i+1)*time_steps,7]
-    # uk[i,:,4] = data[i*time_steps:(i+1)*time_steps,8]
     yk[i,1:,0] = data[i*time_steps:(((i+1)*time_steps)-1),2]
     yk[i,1:,1] = data[i*time_steps:(((i+1)*time_steps)-1),3]
     
@@ -66,11 +66,6 @@ n_epochs = 500 # 50 - mse loss
 batch = 1
 lr = 0.001#0.00025 #0.001 - mse loss
 num_batches = int(num_inputs/batch)
-# ppc_model = model_architecture.ctrlr_ppc()
-# ppc_model.load_state_dict(torch.load("models/theta_vel/target_estimator_200"))
-# rppc_model = model_architecture.ppc_dist()
-# rppc_model.load_state_dict(torch.load("models/theta_vel/extent_specifier_v2_200"))
-# lppc_model = model_architecture.ppc_theta()
 loss_all = np.zeros((n_epochs,num_batches))
 # Define Loss, Optimizer
 criterion = MSELoss()
@@ -84,72 +79,36 @@ for epoch in range(1, n_epochs + 1): #loop for epochs
     j = 0
     print('\nEpoch: {}/{}.............'.format(epoch, n_epochs))
     for i in range(0,train_x.size()[0], batch): #loop for batches
-        
-        # print('\nEpoch: {}/{}.............'.format(epoch, n_epochs))
-        # print('\nBatch: {}/{}.............'.format(i, train_x.size()[0]))
         #Get current batch data
         indices = permutation[i:i+batch]
         batch_x, batch_y = train_x[indices], train_y[indices]
-        # output_ppc = torch.zeros(batch,time_steps, 2) # ppc output
-        # output_theta = torch.zeros(batch,time_steps, 1) # ppc output
-        # output_dist = torch.zeros(batch,time_steps, 1) # ppc output
         output_c = torch.zeros(batch,time_steps, 2) # m1 output
         output_p = torch.zeros(batch,time_steps, 2) # plant output
-#        output_s = torch.zeros(batch,time_steps, 2) # vision/sensory output 
         output_e = torch.zeros(batch,time_steps, 2) # estimator output
         for t in range(time_steps):
-#            # estimator output
+            # estimator output
             output_e[:,t,0] = output_p[:,t-1,0]
             output_e[:,t,1] = output_p[:,t-1,1]
-            
-            # ppc_t = torch.zeros((1,1,4))
-            # ppc_t = torch.cat((batch_x[:,t,0],batch_x[:,t,1],output_e[:,t,0],output_e[:,t,1]),0)#,batch_x[:,t,0],batch_x[:,t,1]),0)
-            # outputtheta = lppc_model(ppc_t)
-            # output_theta[:,t,0] = outputtheta
-            
-            # rppc = torch.zeros((1,1,4))
-            # rppc = torch.cat((output_e[:,t-1,0],output_e[:,t-1,1],output_e[:,t,0],output_e[:,t,1]),0)#outpute[i,t-1,:,1],outpute[i,t,:,0],outpute[i,t,:,1]),0)
-            # outputdist = rppc_model(rppc)
-            # output_dist[:,t,:] = outputdist
-            # # PPC
-            # # X
-            # ppc_x = torch.zeros((batch,1,1,4))
-            # ppc_x = torch.cat((batch_x[:,t,0],output_ppc[:,t-1,0],output_e[:,t-1,0],output_e[:,t,0]),0)
-            # # Y
-            # ppc_y = torch.zeros((batch,1,1,4))
-            # ppc_y = torch.cat((batch_x[:,t,1],output_ppc[:,t-1,1],output_e[:,t-1,1],output_e[:,t,1]),0)
-            # outputppc = ppc_model(ppc_x,ppc_y)#,ppc_d,ppc_t)
-            # output_ppc[:,t,:] = torch.reshape(outputppc,(batch,2))
             # M1
             # X
             control_x = torch.zeros((batch,1,1,3))
             control_x = torch.cat((batch_x[:,t,0],batch_x[:,t,2],batch_x[:,t,3],output_c[:,t-1,0],output_e[:,t-1,0],output_e[:,t,0]),0)
-            # control_x = torch.cat((batch_x[:,t,2],batch_x[:,t,3],output_c[:,t-1,0],output_e[:,t-1,0],output_e[:,t,0]),0)
             # Y
             control_y = torch.zeros((batch,1,1,3))
             control_y = torch.cat((batch_x[:,t,1],batch_x[:,t,2],batch_x[:,t,3],output_c[:,t-1,1],output_e[:,t-1,1],output_e[:,t,1]),0)
-            # control_y = torch.cat((batch_x[:,t,2],batch_x[:,t,4],output_c[:,t-1,1],output_e[:,t-1,1],output_e[:,t,1]),0)
             outputc = m1_model(control_x,control_y)
             output_c[:,t,:] = torch.reshape(outputc,(batch,2))
             # plant model for x- and y-coordinate
             plant_x = torch.zeros(batch,1,1,6) # [uk, zk, z(k-1)] [T(t), o(t-1), o(t-2) ]
             plant_x = torch.cat((output_c[:,t,0],output_p[:,t-2,0],output_p[:,t-1,0],output_c[:,t,1],output_p[:,t-2,1],output_p[:,t-1,1]),0)
             op = plant_model(plant_x)
-            output_p[:,t,:] = op#torch.cat((op,output_ppc[:,t,2:]),1)#torch.reshape(opx,(batch,))
-#            dist = torch.sqrt((output_p[:,t-1,0]-output_p[:,t,0])**2+(output_p[:,t-1,1]-output_p[:,t,1])**2)
-#            spx = (math.cos(math.radians(theta)))*op[0] - (math.sin(math.radians(theta)))*op[1]            
-#            spy = (math.sin(math.radians(theta)))*op[0] + (math.cos(math.radians(theta)))*op[1]
-#            output_s[:,t,0] = spx#torch.reshape(opx,(batch,))
-#            output_s[:,t,1] = spy#torch.reshape(opy,(batch,))
-
+            output_p[:,t,:] = op
         loss = criterion(output_p,batch_y) # Calculate loss
-        # print("\nLoss: {:.8f}".format(loss.item()))
         optimizer.zero_grad()
         loss.backward(retain_graph=True)
         optimizer.step() # Updates the weights accordingly
         loss_all[epoch-1,j] = loss.item()
         j = j+1    
-    # torch.save(rppc_model.state_dict(), "models/theta_vel/extent_specifier_2_v3_"+str(epoch)+"_epochs")
     avg_loss = np.sum(loss_all[epoch-1,:])/num_batches
     print("\nLoss: {:.8f}".format(avg_loss))
     if avg_loss < prev_loss:
@@ -163,8 +122,3 @@ for i in range(n_epochs):
     losses[i,0] = np.sum(loss_all[i,:])/num_batches  
 plt.figure()
 plt.plot(losses)
-
-#plt.figure()
-##plt.plot(uk[0,:,0],uk[0,:,1],color='r')
-##plt.plot(yk[0,:,0],yk[0,:,1],color='b')
-#plt.plot(uk[0,:,3],color='black')
