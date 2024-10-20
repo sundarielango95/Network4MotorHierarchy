@@ -17,7 +17,7 @@ import random
     
 num_inputs = 500
 time_steps = 20
-fname = "data/train_90_deg.xlsx"
+fname = "data/train_random_theta_vel_dist.xlsx"
 data = pd.read_excel(fname)
 data = np.array(data)
 uk = np.zeros((num_inputs,time_steps,4),dtype='float32') # reference signal T(t)
@@ -67,8 +67,6 @@ for epoch in range(1, n_epochs + 1): #loop for epochs
     j = 0
     print('\nEpoch: {}/{}.............'.format(epoch, n_epochs))
     for i in range(0,train_x.size()[0], batch): #loop for batches
-        # print('\nEpoch: {}/{}.............'.format(epoch, n_epochs))
-        # print('\nBatch: {}/{}.............'.format(i, train_x.size()[0]))
         #Get current batch data
         indices = permutation[i:i+batch]
         batch_x, batch_y = train_x[indices], train_y[indices]#, train_y2[indices]
