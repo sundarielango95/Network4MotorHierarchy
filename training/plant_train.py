@@ -2,7 +2,7 @@
 """
 Created on Sun Feb 13 21:04:39 2022
 
-@author: SVC
+@author: Sundari Elango
 """
 import os
 os.environ['KMP_DUPLICATE_LIB_OK']='True'
@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import torch
-from torch.nn import MSELoss#, CrossEntropyLoss, BCELoss
+from torch.nn import MSELoss
 from torch.optim import Adam
 import model_architecture
 import random
@@ -30,8 +30,8 @@ for i in range(num_inputs):
 X = np.zeros((num_inputs,time_steps,4),dtype='float32')
 X = uk
 Y = yk
-x,y = list(X),list(Y)#,list(a),list(b)#,list(t)
-x_sh,y_sh = [],[]#,[]#,[],[]
+x,y = list(X),list(Y)
+x_sh,y_sh = [],[]
 ind = list(range(len(y)))
 random.shuffle(ind)
 for i in ind:
@@ -66,26 +66,20 @@ for epoch in range(1, n_epochs + 1): #loop for epochs
     permutation = torch.randperm(train_x.size()[0])
     j = 0
     print('\nEpoch: {}/{}.............'.format(epoch, n_epochs))
-    for i in range(0,train_x.size()[0], batch): #loop for batches
-        #Get current batch data
+    for i in range(0,train_x.size()[0], batch): # loop for batches
+        # Get current batch data
         indices = permutation[i:i+batch]
-        batch_x, batch_y = train_x[indices], train_y[indices]#, train_y2[indices]
+        batch_x, batch_y = train_x[indices], train_y[indices]
         output_p = torch.zeros(batch,time_steps, 2)
         for t in range(time_steps):
-##            x y
-#            plant_x = torch.zeros(batch,1,1,3) # [uk, zk, z(k-1)] [T(t), o(t-1), o(t-2) ]
-#            plant_x = torch.cat((batch_x[:,t,0],output_p[:,t-2,0],output_p[:,t-1,0]),0)
-#            plant_y = torch.zeros(batch,1,1,3) # [uk, zk, z(k-1)] [T(t), o(t-1), o(t-2) ]
-#            plant_y = torch.cat((batch_x[:,t,1],output_p[:,t-2,1],output_p[:,t-1,1]),0)
-#            op = model(plant_x,plant_y)
-#            output_p[:,t,0] = op[0] 
-#            output_p[:,t,1] = op[1] 
-            
-#           x and y
-            plant_x = torch.zeros(batch,1,1,6) # [uk, zk, z(k-1)] [T(t), o(t-1), o(t-2) ]
-            plant_x = torch.cat((batch_x[:,t,0],output_p[:,t-2,0],output_p[:,t-1,0],batch_x[:,t,1],output_p[:,t-2,1],output_p[:,t-1,1]),0)
-            op = model(plant_x)
-            output_p[:,t,:] = op 
+#          x y
+           plant_x = torch.zeros(batch,1,1,3) # [uk, zk, z(k-1)] [T(t), o(t-1), o(t-2) ]
+           plant_x = torch.cat((batch_x[:,t,0],output_p[:,t-2,0],output_p[:,t-1,0]),0)
+           plant_y = torch.zeros(batch,1,1,3) # [uk, zk, z(k-1)] [T(t), o(t-1), o(t-2) ]
+           plant_y = torch.cat((batch_x[:,t,1],output_p[:,t-2,1],output_p[:,t-1,1]),0)
+           op = model(plant_x,plant_y)
+           output_p[:,t,0] = op[0] 
+           output_p[:,t,1] = op[1] 
 
         # Backpropagate the error
         optimizer.zero_grad()
@@ -99,7 +93,7 @@ for epoch in range(1, n_epochs + 1): #loop for epochs
     print("\nLoss:",avg_loss)
     if prev_loss > avg_loss:
         ## Save model
-        torch.save(model.state_dict(), "models/plant/plant_bar")
+        torch.save(model.state_dict(), "models/plant/plant_xandy")
         prev_loss = avg_loss
         
  # Save model
